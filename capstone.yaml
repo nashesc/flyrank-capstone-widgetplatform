@@ -1,0 +1,12 @@
+run: docker compose up -d && npx inngest-cli dev -u http://localhost:4000/api/inngest --no-discovery & (cd api && npm install && npm run migrate && npm run dev)
+seed: (cd api && npm run seed)
+base_url: http://localhost:4000
+endpoints:
+  - GET /api/widgets
+  - POST /api/widgets
+  - GET /api/widgets/:id/embed
+  - GET /api/widgets/:id/submissions
+  - GET /api/dashboard/stats
+  - GET /api/widgets/:id/config
+  - GET /widget.v1.js
+  - POST /api/submissions

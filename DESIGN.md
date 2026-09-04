@@ -23,13 +23,33 @@ resilient to abuse and dependency failure.
 | Rate limiting        | express-rate-limit                | Per spec's suggested stack                                                  |
 | Geo (fallback chain) | ip-api.com → ipapi.co             | Both free, no key                                                           |
 
-## 3. Non-goal (explicit, per spec requirement)
+## 3. Naming conventions
+
+No generic or filler names — `data`, `result`, `temp`, `handler`, `item`, `obj`, `helper`,
+`process()`, `doStuff()`, `manager`. Every identifier states what it holds or what it does, not
+its type or its role in the pattern.
+
+- Functions: verb + object, specific to the operation — `deriveTenantIdFromWidget`, not
+  `getTenant`; `buildSubmissionSchemaForWidget`, not `buildSchema`; `tryGeoProviderWithTimeout`,
+  not `fetchGeo`.
+- Variables: name the actual content — `widgetRow`, not `data`; `existingSubmissionByIdemKey`,
+  not `result`; `honeypotFieldValue`, not `temp`. A boolean reads as a predicate —
+  `isHoneypotFilled`, `hasValidJwt` — never `flag` or `check`.
+- Middleware/services: name the concern, not the layer — `redactAuthorizationHeader`, not
+  `logMiddleware`; `upsertTenantFromSupabaseClaims`, not `authHelper`.
+- No numbered or lettered disambiguation (`widget2`, `dataA`, `tempFinal`) — if two things need
+  telling apart, name what's different about them (`widgetBeforeUpdate` /
+  `widgetAfterUpdate`).
+- This applies across the codebase and to AI-assisted output per §BUILDLOG — a generated name
+  gets renamed before commit, same as generated logic gets reviewed before commit.
+
+## 4. Non-goal (explicit, per spec requirement)
 
 Will NOT build: drag-and-drop widget builder UI, production email delivery, multi-language widgets,
 real hosting/CDN, more than 2 widget types, a design-token theming system. Field types are a fixed,
 small JSON-driven set (text, email, textarea, checkbox).
 
-## 4. Data model
+## 5. Data model
 
 ```
 tenants          (id, supabase_user_id UNIQUE, name, created_at)
@@ -58,16 +78,16 @@ body. This is what actually makes the tenant-isolation probe pass; the client ca
 anything except which authenticated session it's using.
 
 `ON DELETE RESTRICT` on `submissions.widget_id` is the backstop, but `DELETE /api/widgets/:id`
-(§6) actually does a soft delete: `UPDATE widgets SET deleted_at = now() WHERE id = $1 AND
+(§7) actually does a soft delete: `UPDATE widgets SET deleted_at = now() WHERE id = $1 AND
 tenant_id = $2`. Widget CRUD/list/config/embed queries all add `AND deleted_at IS NULL`;
 submissions and dashboard stats are untouched by a soft delete and keep working against a
 deleted widget's history. RESTRICT stays as a safety net in case anything ever hard-deletes a
 row directly, but soft-delete is the decided behavior, not an open choice.
 
 Renamed `version` → `config_version` to disambiguate from the widget.js **bundle** version, which
-is a separate, global number (see §12). `is_spam` dropped — see §8 for why.
+is a separate, global number (see §13). `is_spam` dropped — see §9 for why.
 
-## 5. Tenant isolation & provisioning
+## 6. Tenant isolation & provisioning
 
 - **Provisioning:** on every authenticated request, `auth.middleware.js` verifies the Supabase
   JWT via `supabase.auth.getClaims()` (server-side SDK call), not a hand-rolled
@@ -97,7 +117,7 @@ is a separate, global number (see §12). `is_spam` dropped — see §8 for why.
   access token, so Probe 1 ("visible via the dashboard API") is reproducible without the
   evaluator creating a Supabase account.
 
-## 6. API surface — three separate request paths
+## 7. API surface — three separate request paths
 
 ### Path A — Widget Owner (authenticated, Supabase JWT)
 
@@ -106,21 +126,21 @@ POST   /api/widgets                    → 201 + Location header
 GET    /api/widgets                    → ?limit (max 100, default 20) & cursor
 GET    /api/widgets/:id
 PATCH  /api/widgets/:id                → always bumps config_version on any field change
-DELETE /api/widgets/:id                → 204, soft delete (deleted_at), see §4
+DELETE /api/widgets/:id                → 204, soft delete (deleted_at), see §5
 GET    /api/widgets/:id/embed          → returns the <script> snippet, built from BASE_URL env,
                                           not the request Host header
 GET    /api/widgets/:id/submissions    → ?limit (max 100, default 20) & cursor, tenant-scoped
 GET    /api/dashboard/stats?widgetId=...
 ```
 
-Dashboard calls this via Next.js `rewrites()` (see §7) so the browser never makes a cross-origin
+Dashboard calls this via Next.js `rewrites()` (see §8) so the browser never makes a cross-origin
 request to the API — no CORS needed on Path A after all, but for a different reason than the
 original draft assumed.
 
 ### Path B — Customer Website (public, cached, CORS, no auth)
 
 ```
-GET /widget.v{N}.js               → versioned bundle, long cache, immutable (see §12)
+GET /widget.v{N}.js               → versioned bundle, long cache, immutable (see §13)
 GET /api/widgets/:id/config       → short-lived cache + ETag, CORS: *
 ```
 
@@ -137,7 +157,7 @@ Header: Idempotency-Key: <client-generated uuid>   — REQUIRED, not optional (s
 Body:   { "widgetId": "<uuid>", "data": { <fieldName>: value, ... } }
 ```
 
-`widgetId` is how the handler looks up the widget (and derives `tenant_id` — §4/§5); it is never
+`widgetId` is how the handler looks up the widget (and derives `tenant_id` — §5/§6); it is never
 read from the request body's `tenant_id`, because there isn't one — the client can't supply it.
 
 Responses: `201` new submission, `200` idempotent replay (same `widget_id` +
@@ -146,12 +166,12 @@ Zod validation failure _or_ missing/malformed `Idempotency-Key`, `413` oversized
 `bodyLimit` middleware), `429` rate-limited. `Idempotency-Key` is required — public clients can't
 be trusted to send it voluntarily, and an optional header means some rows have `NULL`, which
 doesn't collide against future retries (`NULL != NULL` in the unique constraint) and quietly
-defeats the guarantee shared requirement #5 is asking for. The widget script (§11) generates one
+defeats the guarantee shared requirement #5 is asking for. The widget script (§12) generates one
 UUID **when the submit action starts** and reuses it for any retry of that same attempt
 (network failure, double-click) — it does not mint a fresh UUID per click, which would defeat
 idempotency entirely.
 
-## 7. Middleware / cross-cutting concerns
+## 8. Middleware / cross-cutting concerns
 
 - `auth.middleware.js` — verifies Supabase JWT, upserts/attaches `req.tenantId`, rejects Path A
   without valid auth.
@@ -174,7 +194,7 @@ allowedHeaders: ['Content-Type', 'Idempotency-Key'] })` answers `OPTIONS` prefli
 - `bodyLimit` — `express.json({ limit: '20kb' })`. Form submissions are small; anything bigger
   is either an attack or a bug.
 - `validate.middleware.js` — static Zod schemas for widget CRUD; **dynamic** per-widget schema
-  for submissions (§8).
+  for submissions (§9).
 - `errorHandler.js` — the single place that maps errors to responses:
   - Known client errors (Zod failure, body-parser syntax error, `entity.too.large`, not-found,
     unauthorized) → clean 4xx JSON, `{ error: { code, message } }`.
@@ -193,7 +213,7 @@ allowedHeaders: ['Content-Type', 'Idempotency-Key'] })` answers `OPTIONS` prefli
 - Never log the `Authorization` header or the raw JWT anywhere — request logging middleware, if
   added, must redact it. Ties to shared requirement #6 (secrets clean, never logged).
 
-## 8. Dynamic submission validation
+## 9. Dynamic submission validation
 
 `widgets.fields` is a per-widget, customer-defined jsonb array (`[{ name, type, label,
 required, maxLength }]`), so the submission payload can't be validated against one fixed Zod
@@ -209,7 +229,7 @@ schema at compile time. Build the schema at request time:
    reject `__proto__`, `constructor`, `prototype` outright — these names become both Zod schema
    keys and object keys when the payload is assembled, and they're tenant-supplied. Same
    creation-time pass caps `title`/`description`/`button_text` length — the per-field `maxLength`
-   in §8 covers submission _values_, not the widget's own metadata.
+   in §9 covers submission _values_, not the widget's own metadata.
 
 Honeypot: add one extra field (e.g. `_hp`) to the assembled schema, always optional, never shown
 to real visitors by the widget script. If it arrives non-empty: return 2xx, **do not** store a
@@ -223,7 +243,7 @@ you'd rather keep a queryable spam count for the dashboard later, store it with 
 (`stored` / `spam_dropped`) instead of a boolean — but decide before you start pasting evidence,
 not after.
 
-## 9. Enrichment — synchronous, inline, with fallback
+## 10. Enrichment — synchronous, inline, with fallback
 
 ```
 tryGeoProvider(ip, "ip-api.com", timeout=1500ms)
@@ -241,7 +261,7 @@ tryGeoProvider(ip, "ip-api.com", timeout=1500ms)
   ~1,000/day limit and leave you with null-geo rows that muddy your own evidence.
 - Real APIs are for manual dev spot-checks only, per the brief.
 
-## 10. Safe side effect — Inngest (reuses BE-06/BE-09 pattern)
+## 11. Safe side effect — Inngest (reuses BE-06/BE-09 pattern)
 
 Submission is stored, then `inngest.send()` is awaited inside try/catch _before_ the response is
 returned — the await here is only the network call to enqueue the event (fast), not the
@@ -282,7 +302,7 @@ actually sends the confirmation email/webhook runs after the response, out of th
   `SELECT * FROM side_effect_log WHERE submission_id = $1` instead of a log-grep, which is worth
   the schema for a portfolio piece.
 
-## 11. Widget script (vanilla JS) — behavior
+## 12. Widget script (vanilla JS) — behavior
 
 1. Reads its own `<script src="...widget.v{N}.js?id=abc123">` tag, extracts `id`.
 2. Fetches `GET /api/widgets/:id/config`.
@@ -292,7 +312,7 @@ actually sends the confirmation email/webhook runs after the response, out of th
    rendered on a page the widget owner doesn't control — a malicious or compromised tenant
    account turns an `innerHTML` render into stored XSS against every one of that widget's
    customer sites.
-4. Includes the honeypot field (§8), hidden via CSS, never labeled, never focusable
+4. Includes the honeypot field (§9), hidden via CSS, never labeled, never focusable
    (`tabindex="-1"`, `aria-hidden="true"`) — a real screen-reader user shouldn't stumble into it.
 5. Generates a UUID client-side when the submit handler first fires, holds it in memory, and
    reuses it as `Idempotency-Key` on any retry of that same attempt (network failure, double
@@ -300,7 +320,7 @@ actually sends the confirmation email/webhook runs after the response, out of th
    Generating a new UUID on every click would defeat idempotency, not provide it.
 6. On submit → `POST /api/submissions`.
 
-## 12. Widget delivery & caching
+## 13. Widget delivery & caching
 
 Two different "version" concepts, kept separate on purpose:
 
@@ -325,7 +345,7 @@ max-age=30`; the handler compares `If-None-Match` against the current `config_ve
   to ~30s of staleness for a visitor whose browser cached the config just before an edit —
   acceptable for a lead-capture form, and shorter than most CDNs' default browser-cache TTLs.
 
-## 13. Repo structure
+## 14. Repo structure
 
 ```
 flyrank-capstone-widgetplatform/
@@ -349,12 +369,12 @@ flyrank-capstone-widgetplatform/
 │   │   │   │   ├── widgets.service.js
 │   │   │   │   ├── widgets.repository.js
 │   │   │   │   └── widgets.schema.js
-│   │   │   ├── submissions/        # same layering, + dynamic schema builder (§8)
+│   │   │   ├── submissions/        # same layering, + dynamic schema builder (§9)
 │   │   │   └── dashboard/          # same layering, read-only aggregation queries
 │   │   ├── services/
 │   │   │   └── geo/                # cross-cutting, not a tenant resource — not a "module"
 │   │   │       ├── geoClient.js    # real fallback chain
-│   │   │       └── geoMock.js      # GEO_MOCK toggle (§9)
+│   │   │       └── geoMock.js      # GEO_MOCK toggle (§10)
 │   │   ├── inngest/                # client + functions
 │   │   ├── widget-script/          # source for widget.js, statically served — no bundler needed
 │   │   │   └── dist/                # widget.v1.js, widget.v2.js, ... — every version retained
@@ -379,7 +399,7 @@ flyrank-capstone-widgetplatform/
 `modules/widgets/` reuses the repository/service/routes split from BE-02 — same pattern, just
 formalized per module with a dedicated file per layer instead of one file per concern folder.
 
-## 14. capstone.yaml (shape, not final content)
+## 15. capstone.yaml (shape, not final content)
 
 ```yaml
 run: docker compose up -d && npx inngest-cli dev -u http://localhost:4000/api/inngest --no-discovery & (cd api && npm install && npm run migrate && npm run dev)
@@ -407,7 +427,7 @@ land on v4). Migrations run via `node-pg-migrate` — pick one tool now rather t
 longer matches everything — use a named wildcard or a catch-all middleware with no path instead)
 if a literal `app.get('*', ...)` shows up anywhere.
 
-## 15. Practical implementation order
+## 16. Practical implementation order
 
 No rigid per-stage verification table — build in dependency order, commit as you go with normal
 conventional messages (`feat:`, `fix:`, `chore:`, `docs:`), and append real command output to

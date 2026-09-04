@@ -13,10 +13,16 @@ export async function storeSubmission({ widgetId, submittedData, idempotencyKey,
    if (!parsedPayload.success) {
       return { outcome: 'PAYLOAD_INVALID', validationError: parsedPayload.error.errors[0]?.message ?? 'Invalid submission' };
    }
+   const { _hp: honeypotFieldValue, ...cleanPayload } = parsedPayload.data;
+   if (typeof honeypotFieldValue === 'string' && honeypotFieldValue.length > 0) {
+      console.warn(`spam_dropped widget=${widgetId} ip=${visitorIp}`);
+      return { outcome: 'SPAM_DROPPED' };
+   }
+   const validatedPayload = cleanPayload;
    try {
       const submissionRow = await insertSubmission({
          widgetId, tenantId: widgetRow.tenant_id,
-         validatedPayload: parsedPayload.data, idempotencyKey, visitorIp,
+         validatedPayload, idempotencyKey, visitorIp,
       });
       return { outcome: 'CREATED', submissionRow };
    } catch (insertError) {

@@ -16,6 +16,7 @@ export function buildSubmissionSchemaForWidget(widgetFields) {
       if (!fieldDef.required) fieldValidator = fieldValidator.optional();
       shape[fieldDef.name] = fieldValidator;
    }
+   shape._hp = z.string().max(500).optional();
    return z.object(shape).strict();
 }
 

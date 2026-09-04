@@ -26,6 +26,9 @@ export async function createSubmission(req, res, next) {
       if (stored.outcome === 'IDEMPOTENT_REPLAY') {
          return res.status(200).json(stored.submissionRow);
       }
+      if (stored.outcome === 'SPAM_DROPPED') {
+         return res.status(200).json({ ok: true });
+      }
       return res.status(201).json(stored.submissionRow);
    } catch (controllerError) {
       next(controllerError)

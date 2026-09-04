@@ -49,7 +49,7 @@
       formEl.addEventListener('submit', function (submitEvent) {
          submitEvent.preventDefault();
          if (!idempotencyKeyForAttempt) idempotencyKeyForAttempt = crypto.randomUUID();
-         const payload = {};
+         const payload = { _hp: (formEl.elements._hp && formEl.elements._hp.value) || '' };
          (publicConfig.fields || []).forEach(function (fieldDef) {
          const el = formEl.elements[fieldDef.name];
          payload[fieldDef.name] = fieldDef.type === 'checkbox' ? !!el.checked : el.value;

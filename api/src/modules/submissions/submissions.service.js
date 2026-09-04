@@ -1,5 +1,6 @@
 import { findActiveWidgetForSubmission, findExistingSubmissionByIdemKey, insertSubmission } from './submissions.repository.js';
 import { buildSubmissionSchemaForWidget } from './submissions.schema.js';
+import { resolveGeoForIp } from '../../services/geo/geoClient.js';
 
 export async function storeSubmission({ widgetId, submittedData, idempotencyKey, visitorIp }) {
    const widgetRow = await findActiveWidgetForSubmission({ widgetId });
@@ -19,10 +20,14 @@ export async function storeSubmission({ widgetId, submittedData, idempotencyKey,
       return { outcome: 'SPAM_DROPPED' };
    }
    const validatedPayload = cleanPayload;
+   const enrichedGeo = await resolveGeoForIp(visitorIp);
    try {
       const submissionRow = await insertSubmission({
          widgetId, tenantId: widgetRow.tenant_id,
          validatedPayload, idempotencyKey, visitorIp,
+         geoCountry: enrichedGeo.geoCountry,
+         geoCity: enrichedGeo.geoCity,
+         geoProviderUsed: enrichedGeo.geoProviderUsed,
       });
       return { outcome: 'CREATED', submissionRow };
    } catch (insertError) {

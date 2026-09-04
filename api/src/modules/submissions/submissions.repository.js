@@ -16,11 +16,11 @@ export async function findExistingSubmissionByIdemKey({ widgetId, idempotencyKey
    return found.rows[0] ?? null;
 }
 
-export async function insertSubmission({ widgetId, tenantId, validatedPayload, idempotencyKey, visitorIp }) {
-   const inserted = await pool.query(
-      `INSERT INTO submissions (widget_id, tenant_id, payload, idempotency_key, ip)
-      VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [widgetId, tenantId, JSON.stringify(validatedPayload), idempotencyKey, visitorIp]
-   );
+export async function insertSubmission({ widgetId, tenantId, validatedPayload, idempotencyKey, visitorIp, geoCountry, geoCity, geoProviderUsed }) {
+  const inserted = await pool.query(
+    `INSERT INTO submissions (widget_id, tenant_id, payload, idempotency_key, ip, geo_country, geo_city, geo_provider_used)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+    [widgetId, tenantId, JSON.stringify(validatedPayload), idempotencyKey, visitorIp, geoCountry, geoCity, geoProviderUsed]
+  );
    return inserted.rows[0];
 }

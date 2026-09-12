@@ -55,6 +55,9 @@ POST /api/submissions (inside window)
 # -> HTTP/1.1 429 Too Many Requests
 #    RateLimit: limit=60, remaining=0, reset=33 / Retry-After: 33
 #    {"error":{"code":"RATE_LIMITED","message":"Too many requests"}}
+
+POST /api/submissions, fresh key, hours after the window (key d000…0002)
+# -> 201 (legitimate traffic served normally once the window passes)
 ```
 
 Burst run last per DESIGN §8 (same-IP window); 60s pause before later probes.
@@ -135,9 +138,12 @@ GET /widget.v1.js                          -> 200 immutable (max-age=31536000), 
 GET /widget.v2.js                          -> 200 immutable, CORS * (3735 bytes; v1 retained, 3292 bytes)
 OPTIONS /api/widgets/$WIDGET/config       -> 204 Allow-Headers: Content-Type, Idempotency-Key
 OPTIONS /api/submissions                  -> 204 (same)
+GET /api/widgets/563dd7cc-…/embed (seed token)
+# -> {"snippet":"<script src=\"http://localhost:4000/widget.v2.js?id=563dd7cc-…\"></script>"}
+#    (routes and snippet share bundleVersions.js — snippet always tracks the highest dist/ version)
 ```
 
-## Input guards (external review follow-ups)
+## Malformed ID / cursor handling
 
 ```
 POST /api/widgets with fields:[{name:"_hp",...}] -> 400 Forbidden field name (reserved)
@@ -145,10 +151,15 @@ GET /api/widgets/not-a-uuid/config (public)    -> 404, never 500
 GET /api/widgets/not-a-uuid (auth)             -> 404
 GET /api/widgets?cursor=zzz                    -> 400 Invalid cursor
 GET /widget.v9.js (unreleased)                 -> 404 {"error":{"code":"NOT_FOUND",...}}
-Embed snippet derives the version from dist/ (`bundleVersions.js` single source of truth):
-both bundle routes and `/embed` agree — v1+v2 `200`, snippet points at `v2` (highest).
-side_effect_log writes go through one repository (pool imports: repositories + auth
-middleware by design + seed script only); refactored submit -> 201 -> email | sent
+```
+
+## Embed snippet per widget
+
+```
+POST /api/widgets {"type":"signup","title":"…","fields":[…]} (seed token)
+# -> 201 id 563dd7cc-… + Location header
+GET /api/widgets/563dd7cc-…/embed
+# -> 200 {"snippet":"<script src=\"http://localhost:4000/widget.v2.js?id=563dd7cc-…\"></script>"}
 ```
 
 ## Second origin (:5500, real browser)
@@ -184,9 +195,26 @@ GET /api/dashboard/stats?widgetId=8a8b0da0-… (seed token)
 
 ## Shared requirements
 
+- **#1 layered architecture:** `repository → service → controller → routes` per module
+  (`api/src/modules/*`); `pool` is imported only by repository files, `auth.middleware.js`
+  (tenant provisioning lives there by DESIGN §6), and `seed.js` (entry script):
+```
+api\src\middleware\auth.middleware.js
+api\src\modules\dashboard\dashboard.repository.js
+api\src\modules\submissions\sideEffectLog.repository.js
+api\src\modules\submissions\submissions.repository.js
+api\src\modules\widgets\widgets.repository.js
+```
+  (`seed.js` imports its sibling `./pool.js`; the public config route reads through
+  `widgets.repository.js`, not raw SQL.)
+- **#2 validation at the boundary:** Probe 2 + "Malformed ID / cursor handling" above —
+  every 4xx carries `{error:{code,message}}`; unexpected bugs stay sanitized 500s.
 - **#3 background job with retries:** Probe 5 + Inngest Dev Server
   (`npx inngest-cli@latest dev -u http://localhost:4000/api/inngest --no-discovery`,
   `serve()` mounted at `/api/inngest`, `retries: 3`, event dedup `id: submission.id`).
+- **#4 real persistence:** single `node-pg-migrate` migration with the DESIGN §5 tables
+  and indexes (`widgets(tenant_id)`, `submissions(widget_id|tenant_id|created_at)`,
+  unique `(widget_id, idempotency_key)`); tenant isolation proven in "Tenant isolation" above.
 - **#5 idempotency:** Probe "Idempotency" above; replay skips insert *and* event send.
 - **#6 secrets clean:** `.env`/`dashboard/.env.local` gitignored and untracked;
   `Authorization` header is read for verification, never logged; error paths never echo

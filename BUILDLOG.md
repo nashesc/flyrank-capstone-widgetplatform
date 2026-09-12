@@ -57,5 +57,9 @@ before commit (`migrationBuilder`, `upsertTenantFromSupabaseClaims`, `tryGeoProv
   The difference between "I applied a review" and "I evaluated a review" is the point:
   every finding above was checked against the code, and the rejections are minuted here
   with their reasons rather than silently dropped.
+- **Evidence hardening**: Probe 3 gained its post-window `201` closer; process-narrative
+  header renamed to "Malformed ID / cursor handling"; embed-snippet and layering claims
+  replaced with pasted transcripts; shared #1/#2/#4 cross-referenced; dedicated
+  "Embed snippet per widget" proof block.
 
 Total: 20 commits, conventional messages, no fixup/amend chains.

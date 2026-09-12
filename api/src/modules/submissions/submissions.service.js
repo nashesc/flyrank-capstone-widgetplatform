@@ -1,4 +1,4 @@
-import { findActiveWidgetForSubmission, findExistingSubmissionByIdemKey, insertSubmission } from './submissions.repository.js';
+import { findActiveWidgetForSubmission, findExistingSubmissionByIdemKey, insertSubmission, findOwnedWidgetId, listSubmissionsForWidget as listRows } from './submissions.repository.js';
 import { buildSubmissionSchemaForWidget } from './submissions.schema.js';
 import { resolveGeoForIp } from '../../services/geo/geoClient.js';
 import { widgetInngest } from '../../inngest/client.js';
@@ -52,4 +52,13 @@ export async function storeSubmission({ widgetId, submittedData, idempotencyKey,
       }
       throw insertError;
    }
+}
+
+export async function listSubmissionsForWidget({ widgetId, tenantId, listLimit, cursorSubmissionId }) {
+   const ownedWidgetId = await findOwnedWidgetId({ widgetId, tenantId });
+   if (!ownedWidgetId) return { outcome: 'WIDGET_NOT_FOUND' };
+   const { submissionRows, nextCursor } = await listRows({ 
+      widgetId, tenantId, listLimit, cursorSubmissionId 
+   });
+   return { outcome: 'FOUND', submissionRows, nextCursor };
 }

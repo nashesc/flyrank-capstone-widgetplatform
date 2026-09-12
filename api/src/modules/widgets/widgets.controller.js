@@ -1,5 +1,6 @@
 import { createWidgetSchema, patchWidgetSchema } from './widgets.schema.js';
 import { createWidgetForTenant, listWidgetsForTenant, getWidgetForTenant, updateWidgetForTenant, removeWidgetForTenant } from './widgets.service.js';
+import { listSubmissionsForWidget } from '../submissions/submissions.service.js';
 
 function sendValidationError(res, zodError) {
    return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: zodError.errors[0]?.message ?? 'Invalid body' } });
@@ -44,4 +45,19 @@ export async function getWidgetEmbed(req, res) {
    if (!widgetRow) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Widget not found' } });
    const baseUrl = process.env.BASE_URL ?? 'http://localhost:4000';
    res.json({ snippet: `<script src="${baseUrl}/widget.v1.js?id=${widgetRow.id}"></script>` });
+}
+
+export async function getWidgetSubmissions(req, res) {
+   const listLimit = Math.min(Number(req.query.limit ?? 20) || 20, 100);
+   const cursorSubmissionId = req.query.cursor ?? null;
+   const listed = await listSubmissionsForWidget({ 
+      widgetId: req.params.id, 
+      tenantId: req.tenantId, 
+      listLimit, 
+      cursorSubmissionId 
+   });
+   if (listed.outcome === 'WIDGET_NOT_FOUND') {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Widget not found' } });
+   }
+   res.json({ data: listed.submissionRows, nextCursor: listed.nextCursor });
 }

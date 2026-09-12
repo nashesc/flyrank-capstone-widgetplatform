@@ -6,6 +6,7 @@ import publicCors from './middleware/cors.middleware.js';
 import widgetsRouter from './modules/widgets/widgets.routes.js';
 import publicWidgetsRouter from './modules/widgets/widgets.public.routes.js';
 import submissionsRouter from './modules/submissions/submissions.routes.js';
+import dashboardRouter from './modules/dashboard/dashboard.routes.js';
 import { notFoundToJson, mapErrorToJsonResponse } from './middleware/errorHandler.js';
 import { serve } from 'inngest/express';
 import { widgetInngest } from './inngest/client.js';
@@ -23,6 +24,7 @@ export function createApp() {
    app.use('/api/widgets', publicWidgetsRouter);
    app.use('/api/widgets', widgetsRouter);
    app.use('/api/submissions', submissionsRouter);
+   app.use('/api/dashboard', dashboardRouter);
    app.use('/api/inngest', serve({ client: widgetInngest, functions: widgetFunctions }));
    app.get('/widget.v1.js', publicCors, (req, res) => {
       res.set('Cache-Control', 'public, max-age=31536000, immutable');

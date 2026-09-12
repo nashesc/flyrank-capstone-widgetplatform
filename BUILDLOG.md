@@ -46,5 +46,8 @@ before commit (`migrationBuilder`, `upsertTenantFromSupabaseClaims`, `tryGeoProv
   plus a `22P02 → 404` backstop; `sideEffectLog.repository.js` unifies both writers;
   bundle routes served from a boot-time `dist/` whitelist; DESIGN §3/§13 clarified.
   Reviewer's LICENSE item refuted (MIT tracked since foundation).
+- **Embed version source of truth**: `widget-script/bundleVersions.js` (boot-time
+  `dist/` whitelist) feeds both the bundle routes and the embed snippet — v3 ships by
+  adding the file, no string-hunt.
 
 Total: 17 commits, conventional messages, no fixup/amend chains.

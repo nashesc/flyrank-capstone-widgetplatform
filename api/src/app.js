@@ -1,7 +1,5 @@
 import express from 'express';
-import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { upsertTenantFromSupabaseClaims } from './middleware/auth.middleware.js';
 import publicCors from './middleware/cors.middleware.js';
 import widgetsRouter from './modules/widgets/widgets.routes.js';
@@ -12,11 +10,7 @@ import { notFoundToJson, mapErrorToJsonResponse } from './middleware/errorHandle
 import { serve } from 'inngest/express';
 import { widgetInngest } from './inngest/client.js';
 import { widgetFunctions } from './inngest/functions.js';
-
-const currentDir = path.dirname(fileURLToPath(import.meta.url));
-const bundleDir = path.join(currentDir, 'widget-script', 'dist');
-const bundleFilePattern = /^widget\.v\d+\.js$/;
-const servedBundleFiles = fs.readdirSync(bundleDir).filter((fileName) => bundleFilePattern.test(fileName));
+import { bundleDir, servedBundleFiles } from './widget-script/bundleVersions.js';
 
 export function createApp() {
    const app = express();

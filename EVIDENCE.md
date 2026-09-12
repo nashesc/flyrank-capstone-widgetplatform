@@ -145,6 +145,8 @@ GET /api/widgets/not-a-uuid/config (public)    -> 404, never 500
 GET /api/widgets/not-a-uuid (auth)             -> 404
 GET /api/widgets?cursor=zzz                    -> 400 Invalid cursor
 GET /widget.v9.js (unreleased)                 -> 404 {"error":{"code":"NOT_FOUND",...}}
+Embed snippet derives the version from dist/ (`bundleVersions.js` single source of truth):
+both bundle routes and `/embed` agree — v1+v2 `200`, snippet points at `v2` (highest).
 side_effect_log writes go through one repository (pool imports: repositories + auth
 middleware by design + seed script only); refactored submit -> 201 -> email | sent
 ```

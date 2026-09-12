@@ -1,6 +1,7 @@
 import { createWidgetSchema, patchWidgetSchema, widgetIdParamSchema, listCursorSchema } from './widgets.schema.js';
 import { createWidgetForTenant, listWidgetsForTenant, getWidgetForTenant, updateWidgetForTenant, removeWidgetForTenant } from './widgets.service.js';
 import { listSubmissionsForWidget } from '../submissions/submissions.service.js';
+import { getLatestBundleVersion } from '../../widget-script/bundleVersions.js';
 
 function sendValidationError(res, zodError) {
   return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: zodError.errors[0]?.message ?? 'Invalid body' } });
@@ -15,10 +16,10 @@ function isWidgetIdParamValid(req) {
 }
 
 export async function createWidget(req, res) {
-   const parsed = createWidgetSchema.safeParse(req.body);
-   if (!parsed.success) return sendValidationError(res, parsed.error);
-   const widgetRow = await createWidgetForTenant({ tenantId: req.tenantId, validatedBody: parsed.data });
-   res.status(201).location(`/api/widgets/${widgetRow.id}`).json(widgetRow);
+  const parsed = createWidgetSchema.safeParse(req.body);
+  if (!parsed.success) return sendValidationError(res, parsed.error);
+  const widgetRow = await createWidgetForTenant({ tenantId: req.tenantId, validatedBody: parsed.data });
+  res.status(201).location(`/api/widgets/${widgetRow.id}`).json(widgetRow);
 }
 
 export async function listWidgets(req, res) {
@@ -56,10 +57,11 @@ export async function deleteWidget(req, res) {
 
 export async function getWidgetEmbed(req, res) {
   if (!isWidgetIdParamValid(req)) return sendNotFound(res);
-   const widgetRow = await getWidgetForTenant({ widgetId: req.params.id, tenantId: req.tenantId });
-   if (!widgetRow) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Widget not found' } });
-   const baseUrl = process.env.BASE_URL ?? 'http://localhost:4000';
-   res.json({ snippet: `<script src="${baseUrl}/widget.v2.js?id=${widgetRow.id}"></script>` });
+  const widgetRow = await getWidgetForTenant({ widgetId: req.params.id, tenantId: req.tenantId });
+  if (!widgetRow) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Widget not found' } });
+  const baseUrl = process.env.BASE_URL ?? 'http://localhost:4000';
+  const latestBundleVersion = getLatestBundleVersion();
+  res.json({ snippet: `<script src="${baseUrl}/widget.v${latestBundleVersion}.js?id=${widgetRow.id}"></script>` });
 }
 
 export async function getWidgetSubmissions(req, res) {
@@ -69,14 +71,14 @@ export async function getWidgetSubmissions(req, res) {
   if (!listCursorSchema.safeParse(cursorSubmissionId).success) {
     return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid cursor' } });
   }
-   const listed = await listSubmissionsForWidget({ 
-      widgetId: req.params.id, 
-      tenantId: req.tenantId, 
-      listLimit, 
-      cursorSubmissionId 
-   });
-   if (listed.outcome === 'WIDGET_NOT_FOUND') {
-      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Widget not found' } });
-   }
-   res.json({ data: listed.submissionRows, nextCursor: listed.nextCursor });
+  const listed = await listSubmissionsForWidget({ 
+    widgetId: req.params.id, 
+    tenantId: req.tenantId, 
+    listLimit, 
+    cursorSubmissionId 
+  });
+  if (listed.outcome === 'WIDGET_NOT_FOUND') {
+    return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Widget not found' } });
+  }
+  res.json({ data: listed.submissionRows, nextCursor: listed.nextCursor });
 }

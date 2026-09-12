@@ -25,11 +25,12 @@ Prereqs: Node 20, Docker Desktop, a Supabase project.
 # 1. Postgres
 docker compose up -d
 
-# 2. API
+# 2. API — copy env first, then fill in your keys (see Environment below)
+cp api/.env.example api/.env
 cd api
 npm install
 npm run migrate
-npm run seed     # idempotent; creates the evaluator account + demo widget (needs keys below)
+npm run seed     # idempotent; creates the evaluator account + demo widget
 npm run dev      # :4000
 ```
 
@@ -41,6 +42,7 @@ npx inngest-cli@latest dev -u http://localhost:4000/api/inngest --no-discovery
 
 ```bash
 # 4. Owner dashboard (third terminal, optional — the API alone is a complete backend)
+cp dashboard/.env.example dashboard/.env.local   # then fill keys (see Environment below)
 cd dashboard
 npm install
 npm run dev      # :3000, login with the seed credentials below
@@ -49,11 +51,12 @@ npm run dev      # :3000, login with the seed credentials below
 ```bash
 # 5. Second-origin customer page (fourth terminal, for the cross-origin proof)
 npx serve test-site -l 5500
-# open http://localhost:5500 — never double-click the file (file:// voids the CORS proof)
+```
+
+Open http://localhost:5500 — never double-click the file (file:// voids the CORS proof).
 
 Note: capstone.yaml's one-line `run:` is POSIX syntax (Linux / Git Bash). On Windows
 PowerShell, follow the per-terminal steps above instead — equivalent commands.
-```
 
 ### Environment
 
@@ -100,7 +103,7 @@ curl http://localhost:4000/api/me -H "Authorization: Bearer <access_token>"
 | `POST /api/widgets` | Supabase JWT | Create widget → `201` + `Location` |
 | `GET /api/widgets` | Supabase JWT | List, `?limit` (max 100, default 20) + `cursor` |
 | `GET /api/widgets/:id` | Supabase JWT | One widget (404 for foreign/deleted — never 403) |
-| `PATCH /api/widgets/:id` | Supabase JWT | Edit; always bumps `config_version` |
+| `PATCH /api/widgets/:id` | Supabase JWT | Edit; bumps `config_version` only when a field actually changed (same-values PATCH leaves it and the ETag stable) |
 | `DELETE /api/widgets/:id` | Supabase JWT | Soft delete → `204`; history untouched |
 | `GET /api/widgets/:id/embed` | Supabase JWT | `<script>` snippet built from `BASE_URL` |
 | `GET /api/widgets/:id/submissions` | Supabase JWT | Submissions, `?limit` + `cursor` |
@@ -108,6 +111,8 @@ curl http://localhost:4000/api/me -H "Authorization: Bearer <access_token>"
 | `GET /api/widgets/:id/config` | Public, CORS | Render projection + `ETag`, `max-age=30` |
 | `GET /widget.vN.js` | Public, CORS | Immutable bundle (`max-age=31536000`); all versions retained |
 | `POST /api/submissions` | Public, CORS, `Idempotency-Key: <uuid>` required | `201` new / `200` replay / `400` / `404` / `413` / `429` |
+| `GET /api/me` | Supabase JWT | Session probe → `{tenantId, supabaseUserId}`; tenant auto-provisioned |
+| `GET /health` | Public | Liveness probe → `{"status":"ok"}` |
 
 Error shape everywhere: `{ "error": { "code": "…", "message": "…" } }`. Unexpected bugs are
 sanitized `500`s, never stacks.
@@ -124,5 +129,6 @@ api/src/
 dashboard/ (Next.js owner app)   test-site/ (plain-HTML second origin)
 ```
 
-Bundle versions are global and manual (`v1` frozen, `v2` current: submit status line);
-per-widget `config_version` rides the config `ETag` and is never in the public body.
+Bundle versions are global and manual — each release ships as `widget.vN.js`, every file
+retained; the embed endpoint always points at the highest version present in `dist/`.
+Per-widget `config_version` rides the config `ETag` and is never in the public body.

@@ -68,4 +68,4 @@ before commit (`migrationBuilder`, `upsertTenantFromSupabaseClaims`, `tryGeoProv
   defends the old behavior (DESIGN §9 never considered blank-vs-absent; §8 explicitly
   forbids the leaked outcome).
 
-Total: 24 commits, conventional messages, no fixup/amend chains.
+Total: 25 commits, conventional messages, no fixup/amend chains.

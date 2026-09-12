@@ -121,12 +121,19 @@ sanitized `500`s, never stacks.
 
 ```
 api/src/
-  config/  db/ (pool, seed)  middleware/ (auth, cors, rateLimit, bodyLimit→errorHandler)
-  modules/ (widgets, submissions, dashboard — repository/service/controller/routes each)
-  services/geo/ (fallback chain + mock)  inngest/ (client + functions)
-  widget-script/dist/ (widget.v1.js, widget.v2.js, … — every version retained)
-  app.js  index.js        api/migrations/ (node-pg-migrate)
-dashboard/ (Next.js owner app)   test-site/ (plain-HTML second origin)
+├── db/ (pool, seed)
+├── middleware/ (auth, cors, rateLimit, errorHandler)
+├── modules/ (widgets, submissions, dashboard — repository/service/controller/routes each)
+├── services/geo/ (fallback chain + mock)
+├── inngest/ (client + functions)
+├── widget-script/
+│   ├── bundleVersions.js (single source of truth for served versions)
+│   └── dist/ (widget.v1.js, widget.v2.js, … — every version retained)
+├── app.js
+└── index.js
+api/migrations/ (node-pg-migrate)
+dashboard/ (Next.js owner app)
+test-site/ (plain-HTML second origin)
 ```
 
 Bundle versions are global and manual — each release ships as `widget.vN.js`, every file

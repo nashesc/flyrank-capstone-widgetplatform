@@ -62,4 +62,4 @@ before commit (`migrationBuilder`, `upsertTenantFromSupabaseClaims`, `tryGeoProv
   replaced with pasted transcripts; shared #1/#2/#4 cross-referenced; dedicated
   "Embed snippet per widget" proof block.
 
-Total: 20 commits, conventional messages, no fixup/amend chains.
+Total: 23 commits, conventional messages, no fixup/amend chains.

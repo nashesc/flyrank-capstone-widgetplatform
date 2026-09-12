@@ -1,6 +1,8 @@
 import { findActiveWidgetForSubmission, findExistingSubmissionByIdemKey, insertSubmission } from './submissions.repository.js';
 import { buildSubmissionSchemaForWidget } from './submissions.schema.js';
 import { resolveGeoForIp } from '../../services/geo/geoClient.js';
+import { widgetInngest } from '../../inngest/client.js';
+import pool from '../../db/pool.js';
 
 export async function storeSubmission({ widgetId, submittedData, idempotencyKey, visitorIp }) {
    const widgetRow = await findActiveWidgetForSubmission({ widgetId });
@@ -29,6 +31,19 @@ export async function storeSubmission({ widgetId, submittedData, idempotencyKey,
          geoCity: enrichedGeo.geoCity,
          geoProviderUsed: enrichedGeo.geoProviderUsed,
       });
+      try {
+         await widgetInngest.send({
+         name: 'submission/created',
+         id: submissionRow.id,
+         data: { submissionId: submissionRow.id, widgetId, tenantId: widgetRow.tenant_id },
+         });
+      } catch (enqueueError) {
+         await pool.query(
+         `INSERT INTO side_effect_log (submission_id, kind, status, error)
+            VALUES ($1,'enqueue','failed',$2)`,
+         [submissionRow.id, enqueueError?.message ?? 'enqueue failed']
+         );
+      }
       return { outcome: 'CREATED', submissionRow };
    } catch (insertError) {
       if (insertError?.code === '23505') {

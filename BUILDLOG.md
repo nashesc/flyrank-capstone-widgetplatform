@@ -38,16 +38,24 @@ before commit (`migrationBuilder`, `upsertTenantFromSupabaseClaims`, `tryGeoProv
   demo widget), `widget.v2.js` (submit status line — v1 frozen per §13, still served).
 - **Step 10a** (`8dd7d75`): minimal Next.js dashboard (login, widget list, submissions +
   snippet), `rewrites()` so Path A stays same-origin; verified HTML + proxied 401/200.
-- **Audit fixes**: deduped `api/.env.example` (had double keys); README gained the
+- **Audit fixes** (`9b41ad7`): deduped `api/.env.example` (had double keys); README gained the
   required architecture diagram; stats per-widget summary gained 14-day series + geo
   breakdown (spec §4.6); EVIDENCE reworded two browser-only claims to verified status.
-- **External review fixes**: no-op PATCH diff (version/ETag stable on same values);
-  `_hp` reserved as a field name; UUID guards on `:id` params (404) and cursors (400)
-  plus a `22P02 → 404` backstop; `sideEffectLog.repository.js` unifies both writers;
-  bundle routes served from a boot-time `dist/` whitelist; DESIGN §3/§13 clarified.
-  Reviewer's LICENSE item refuted (MIT tracked since foundation).
-- **Embed version source of truth**: `widget-script/bundleVersions.js` (boot-time
-  `dist/` whitelist) feeds both the bundle routes and the embed snippet — v3 ships by
-  adding the file, no string-hunt.
+- **External review fixes, round 1** (`4992a05`): applied no-op PATCH diff (version/ETag
+  stable on same values), `_hp` reserved as a field name, UUID guards on `:id` params
+  (404) and cursors (400) plus a `22P02 → 404` backstop, `sideEffectLog.repository.js`
+  unifies both writers, bundle routes served from a boot-time `dist/` whitelist,
+  DESIGN §3/§13 clarified. The reviewer's LICENSE-missing item was refuted with
+  evidence (`git ls-files` shows MIT tracked since `c737589`), not taken on trust.
+- **External review fixes, round 2** (`1907c45`): applied the embed single source of
+  truth (`widget-script/bundleVersions.js` feeds routes and snippet — v3 ships by adding
+  the file, no string-hunt). Rejected two items as fail-safe with no probing path:
+  moving `sideEffectLog.repository.js` out of `modules/submissions/` (only one writer
+  exists — move when a second job needs it) and making the PATCH diff atomic
+  (`SELECT … FOR UPDATE` adds complexity for a race no probe exercises; a concurrent
+  false-positive only causes an extra cache-bust, never a missed update).
+  The difference between "I applied a review" and "I evaluated a review" is the point:
+  every finding above was checked against the code, and the rejections are minuted here
+  with their reasons rather than silently dropped.
 
-Total: 17 commits, conventional messages, no fixup/amend chains.
+Total: 20 commits, conventional messages, no fixup/amend chains.

@@ -61,5 +61,11 @@ before commit (`migrationBuilder`, `upsertTenantFromSupabaseClaims`, `tryGeoProv
   header renamed to "Malformed ID / cursor handling"; embed-snippet and layering claims
   replaced with pasted transcripts; shared #1/#2/#4 cross-referenced; dedicated
   "Embed snippet per widget" proof block.
+- **External review fixes, round 3**: optional blank email now stores
+  (`union(['', email])`, required stays strict); public CORS scoped to `/:id/config`
+  (Path A responses carry no `ACAO` header, preflight intact). Both were verified as
+  oversights, not intentional decisions — no spec text, comment, or history entry
+  defends the old behavior (DESIGN §9 never considered blank-vs-absent; §8 explicitly
+  forbids the leaked outcome).
 
-Total: 23 commits, conventional messages, no fixup/amend chains.
+Total: 24 commits, conventional messages, no fixup/amend chains.

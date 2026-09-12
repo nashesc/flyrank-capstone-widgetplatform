@@ -41,6 +41,9 @@ POST /api/submissions  (no Idempotency-Key)
 POST /api/submissions  (empty body file — JSON syntax probe)
 # -> 400 {"error":{"code":"VALIDATION_ERROR","message":"Malformed JSON body"}}
 
+Optional email left blank -> stored: widget with fields:[{name:email, required:false}],
+POST {"email":""} -> 201. Required email blank -> still 400 (strictness preserved).
+
 POST /api/submissions  (21026-byte body, Idempotency-Key 4444…4444)
 # -> 413 {"error":{"code":"PAYLOAD_TOO_LARGE","message":"Body exceeds 20kb limit"}}
 ```
@@ -138,6 +141,9 @@ GET /widget.v1.js                          -> 200 immutable (max-age=31536000), 
 GET /widget.v2.js                          -> 200 immutable, CORS * (3735 bytes; v1 retained, 3292 bytes)
 OPTIONS /api/widgets/$WIDGET/config       -> 204 Allow-Headers: Content-Type, Idempotency-Key
 OPTIONS /api/submissions                  -> 204 (same)
+Path A carries no CORS headers (public middleware scoped to /:id/config):
+PATCH /api/widgets/:id -> Access-Control-Allow-Origin count 0;
+GET /api/widgets -> 0; GET .../config -> 1; OPTIONS config -> 204 unchanged.
 GET /api/widgets/563dd7cc-…/embed (seed token)
 # -> {"snippet":"<script src=\"http://localhost:4000/widget.v2.js?id=563dd7cc-…\"></script>"}
 #    (routes and snippet share bundleVersions.js — snippet always tracks the highest dist/ version)

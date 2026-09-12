@@ -9,7 +9,11 @@ export function buildSubmissionSchemaForWidget(widgetFields) {
    const shape = {};
    for (const fieldDef of widgetFields) {
       let fieldValidator;
-      if (fieldDef.type === 'email') fieldValidator = z.string().email();
+      if (fieldDef.type === 'email') {
+         fieldValidator = fieldDef.required
+            ? z.string().email()
+            : z.union([z.literal(''), z.string().email()]);
+      }
       else if (fieldDef.type === 'checkbox') fieldValidator = z.boolean();
       else if (fieldDef.type === 'textarea') fieldValidator = z.string().max(fieldDef.maxLength ?? 5000);
       else fieldValidator = z.string().max(fieldDef.maxLength ?? 500);

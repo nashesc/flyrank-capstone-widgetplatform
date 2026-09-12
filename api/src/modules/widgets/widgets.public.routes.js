@@ -4,7 +4,8 @@ import { widgetIdParamSchema } from './widgets.schema.js';
 import { findPublicWidgetConfig } from './widgets.repository.js';
 
 const publicWidgetsRouter = Router();
-publicWidgetsRouter.use(publicCors);
+
+publicWidgetsRouter.use('/:id/config', publicCors);
 
 publicWidgetsRouter.get('/:id/config', async (req, res) => {
   if (!widgetIdParamSchema.safeParse(req.params.id).success) {

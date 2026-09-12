@@ -44,7 +44,7 @@ export async function getWidgetEmbed(req, res) {
    const widgetRow = await getWidgetForTenant({ widgetId: req.params.id, tenantId: req.tenantId });
    if (!widgetRow) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Widget not found' } });
    const baseUrl = process.env.BASE_URL ?? 'http://localhost:4000';
-   res.json({ snippet: `<script src="${baseUrl}/widget.v1.js?id=${widgetRow.id}"></script>` });
+   res.json({ snippet: `<script src="${baseUrl}/widget.v2.js?id=${widgetRow.id}"></script>` });
 }
 
 export async function getWidgetSubmissions(req, res) {

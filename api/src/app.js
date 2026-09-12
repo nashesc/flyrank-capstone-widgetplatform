@@ -27,9 +27,14 @@ export function createApp() {
    app.use('/api/dashboard', dashboardRouter);
    app.use('/api/inngest', serve({ client: widgetInngest, functions: widgetFunctions }));
    app.get('/widget.v1.js', publicCors, (req, res) => {
-      res.set('Cache-Control', 'public, max-age=31536000, immutable');
-      res.set('Content-Type', 'application/javascript');
-      res.sendFile(path.join(currentDir, 'widget-script', 'dist', 'widget.v1.js'));
+   res.set('Cache-Control', 'public, max-age=31536000, immutable');
+   res.set('Content-Type', 'application/javascript');
+   res.sendFile(path.join(currentDir, 'widget-script', 'dist', 'widget.v1.js'));
+   });
+   app.get('/widget.v2.js', publicCors, (req, res) => {
+   res.set('Cache-Control', 'public, max-age=31536000, immutable');
+   res.set('Content-Type', 'application/javascript');
+   res.sendFile(path.join(currentDir, 'widget-script', 'dist', 'widget.v2.js'));
    });
    app.use(notFoundToJson);
    app.use(mapErrorToJsonResponse);

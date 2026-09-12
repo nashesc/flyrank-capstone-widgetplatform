@@ -9,4 +9,5 @@ endpoints:
   - GET /api/dashboard/stats
   - GET /api/widgets/:id/config
   - GET /widget.v1.js
+  - GET /widget.v2.js
   - POST /api/submissions

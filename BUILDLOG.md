@@ -41,5 +41,10 @@ before commit (`migrationBuilder`, `upsertTenantFromSupabaseClaims`, `tryGeoProv
 - **Audit fixes**: deduped `api/.env.example` (had double keys); README gained the
   required architecture diagram; stats per-widget summary gained 14-day series + geo
   breakdown (spec §4.6); EVIDENCE reworded two browser-only claims to verified status.
+- **External review fixes**: no-op PATCH diff (version/ETag stable on same values);
+  `_hp` reserved as a field name; UUID guards on `:id` params (404) and cursors (400)
+  plus a `22P02 → 404` backstop; `sideEffectLog.repository.js` unifies both writers;
+  bundle routes served from a boot-time `dist/` whitelist; DESIGN §3/§13 clarified.
+  Reviewer's LICENSE item refuted (MIT tracked since foundation).
 
 Total: 17 commits, conventional messages, no fixup/amend chains.

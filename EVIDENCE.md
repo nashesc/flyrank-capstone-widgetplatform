@@ -112,6 +112,7 @@ GET /api/dashboard/stats?widgetId=$WIDGET ($TOKEN2)  -> 404
 
 ```
 PATCH title -> config_version 1 -> 2 (any field edit bumps)
+PATCH same values back -> 200, version unchanged (no-op never busts the config ETag)
 DELETE /api/widgets/$WIDGET -> 204; GET -> 404
 SELECT id, title, config_version, deleted_at ... -> row present, deleted_at set
 ```
@@ -134,6 +135,18 @@ GET /widget.v1.js                          -> 200 immutable (max-age=31536000), 
 GET /widget.v2.js                          -> 200 immutable, CORS * (3735 bytes; v1 retained, 3292 bytes)
 OPTIONS /api/widgets/$WIDGET/config       -> 204 Allow-Headers: Content-Type, Idempotency-Key
 OPTIONS /api/submissions                  -> 204 (same)
+```
+
+## Input guards (external review follow-ups)
+
+```
+POST /api/widgets with fields:[{name:"_hp",...}] -> 400 Forbidden field name (reserved)
+GET /api/widgets/not-a-uuid/config (public)    -> 404, never 500
+GET /api/widgets/not-a-uuid (auth)             -> 404
+GET /api/widgets?cursor=zzz                    -> 400 Invalid cursor
+GET /widget.v9.js (unreleased)                 -> 404 {"error":{"code":"NOT_FOUND",...}}
+side_effect_log writes go through one repository (pool imports: repositories + auth
+middleware by design + seed script only); refactored submit -> 201 -> email | sent
 ```
 
 ## Second origin (:5500, real browser)

@@ -39,7 +39,9 @@ its type or its role in the pattern.
   `logMiddleware`; `upsertTenantFromSupabaseClaims`, not `authHelper`.
 - No numbered or lettered disambiguation (`widget2`, `dataA`, `tempFinal`) — if two things need
   telling apart, name what's different about them (`widgetBeforeUpdate` /
-  `widgetAfterUpdate`).
+  `widgetAfterUpdate`). Exception: `widget.vN.js` bundle filenames carry a version number
+  because immutable delivery (§13) requires a distinct URL per release — the number is the
+  release identity, not disambiguation.
 - This applies across the codebase and to AI-assisted output per §BUILDLOG — a generated name
   gets renamed before commit, same as generated logic gets reviewed before commit.
 
@@ -333,8 +335,8 @@ immutable`. Every version's file is kept — `widget-script/dist/widget.v{N}.js`
   replaced isn't graceful versioning, it's a regression for every site that already pasted the
   old snippet.
 - **Config version** — `widgets.config_version`, per-widget, incremented by `PATCH
-/api/widgets/:id` on any field/settings edit (a no-op PATCH that changes nothing does not bump
-  it). Used as the `ETag` on `GET /api/widgets/:id/config`, served with `Cache-Control: public,
+/api/widgets/:id` on any field/settings edit (a no-op PATCH — same values as stored;
+  an empty body is already rejected with 400 — does not bump it, so the ETag stays stable). Used as the `ETag` on `GET /api/widgets/:id/config`, served with `Cache-Control: public,
 max-age=30`; the handler compares `If-None-Match` against the current `config_version` and
   returns `304` on a match. Not required by the brief (only the `Cache-Control` header is), but
   cheap given the ETag already exists. This is deliberately a short-TTL polling cache, not a versioned/immutable one like

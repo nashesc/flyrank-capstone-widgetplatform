@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const FORBIDDEN_FIELD_NAMES = ['__proto__', 'constructor', 'prototype'];
+const FORBIDDEN_FIELD_NAMES = ['__proto__', 'constructor', 'prototype', '_hp'];
 
 const widgetFieldSchema = z.object({
    name: z.string()
@@ -22,10 +22,13 @@ export const createWidgetSchema = z.object({
 }).strict();
 
 export const patchWidgetSchema = z.object({
-   type: z.enum(['signup', 'cta', 'popover']).optional(),
-   title: z.string().min(1).max(200).optional(),
-   description: z.string().max(1000).optional(),
-   fields: z.array(widgetFieldSchema).max(20).optional(),
-   button_text: z.string().min(1).max(50).optional(),
-   display_options: z.object({}).passthrough().optional(),
+  type: z.enum(['signup', 'cta', 'popover']).optional(),
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().max(1000).optional(),
+  fields: z.array(widgetFieldSchema).max(20).optional(),
+  button_text: z.string().min(1).max(50).optional(),
+  display_options: z.object({}).passthrough().optional(),
 }).strict().refine((patchValues) => Object.keys(patchValues).length > 0, { message: 'Empty patch' });
+
+export const widgetIdParamSchema = z.string().uuid();
+export const listCursorSchema = z.string().uuid().nullable();

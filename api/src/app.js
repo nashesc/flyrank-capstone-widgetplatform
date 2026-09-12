@@ -1,4 +1,5 @@
 import express from 'express';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { upsertTenantFromSupabaseClaims } from './middleware/auth.middleware.js';
@@ -13,6 +14,9 @@ import { widgetInngest } from './inngest/client.js';
 import { widgetFunctions } from './inngest/functions.js';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const bundleDir = path.join(currentDir, 'widget-script', 'dist');
+const bundleFilePattern = /^widget\.v\d+\.js$/;
+const servedBundleFiles = fs.readdirSync(bundleDir).filter((fileName) => bundleFilePattern.test(fileName));
 
 export function createApp() {
    const app = express();
@@ -26,16 +30,13 @@ export function createApp() {
    app.use('/api/submissions', submissionsRouter);
    app.use('/api/dashboard', dashboardRouter);
    app.use('/api/inngest', serve({ client: widgetInngest, functions: widgetFunctions }));
-   app.get('/widget.v1.js', publicCors, (req, res) => {
-   res.set('Cache-Control', 'public, max-age=31536000, immutable');
-   res.set('Content-Type', 'application/javascript');
-   res.sendFile(path.join(currentDir, 'widget-script', 'dist', 'widget.v1.js'));
-   });
-   app.get('/widget.v2.js', publicCors, (req, res) => {
-   res.set('Cache-Control', 'public, max-age=31536000, immutable');
-   res.set('Content-Type', 'application/javascript');
-   res.sendFile(path.join(currentDir, 'widget-script', 'dist', 'widget.v2.js'));
-   });
+   for (const bundleFileName of servedBundleFiles) {
+     app.get(`/${bundleFileName}`, publicCors, (req, res) => {
+     res.set('Cache-Control', 'public, max-age=31536000, immutable');
+     res.set('Content-Type', 'application/javascript');
+     res.sendFile(path.join(bundleDir, bundleFileName));
+     });
+   }
    app.use(notFoundToJson);
    app.use(mapErrorToJsonResponse);
    return app;

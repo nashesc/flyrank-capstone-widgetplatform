@@ -36,26 +36,46 @@ export async function listWidgetsByTenant({ tenantId, listLimit, cursorWidgetId 
 }
 
 export async function findWidgetByIdForTenant({ widgetId, tenantId }) {
-   const found = await pool.query(
-      `SELECT * FROM widgets WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL`,
-      [widgetId, tenantId]
-   );
-   return found.rows[0] ?? null;
+  const found = await pool.query(
+    `SELECT * FROM widgets WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL`,
+    [widgetId, tenantId]
+  );
+  return found.rows[0] ?? null;
+}
+
+export async function findPublicWidgetConfig({ widgetId }) {
+  const found = await pool.query(
+    `SELECT type, title, description, fields, button_text, display_options, config_version
+     FROM widgets WHERE id = $1 AND deleted_at IS NULL`,
+    [widgetId]
+  );
+  return found.rows[0] ?? null;
+}
+
+function hasWidgetValueChanged(columnName, newValue, storedRow) {
+  if (columnName === 'fields' || columnName === 'display_options') {
+    return JSON.stringify(newValue) !== JSON.stringify(storedRow[columnName]);
+  }
+  return newValue !== storedRow[columnName];
 }
 
 export async function patchWidgetForTenant({ widgetId, tenantId, patchValues }) {
-   const columns = [];
-   const values = [];
-   let paramIndex = 1;
-   for (const [columnName, columnValue] of Object.entries(patchValues)) {
-      const dbValue = (columnName === 'fields' || columnName === 'display_options')
-         ? JSON.stringify(columnValue) : columnValue;
-      columns.push(`${columnName} = $${paramIndex++}`);
-      values.push(dbValue);
-   }
-   columns.push(`config_version = config_version + 1`);
-   columns.push(`updated_at = now()`);
-   values.push(widgetId, tenantId);
+  const currentRow = await findWidgetByIdForTenant({ widgetId, tenantId });
+  if (!currentRow) return null;
+  const columns = [];
+  const values = [];
+  let paramIndex = 1;
+  for (const [columnName, columnValue] of Object.entries(patchValues)) {
+    if (!hasWidgetValueChanged(columnName, columnValue, currentRow)) continue;
+    const dbValue = (columnName === 'fields' || columnName === 'display_options')
+      ? JSON.stringify(columnValue) : columnValue;
+    columns.push(`${columnName} = $${paramIndex++}`);
+    values.push(dbValue);
+  }
+  if (columns.length === 0) return currentRow;
+  columns.push(`config_version = config_version + 1`);
+  columns.push(`updated_at = now()`);
+  values.push(widgetId, tenantId);
    const patched = await pool.query(
       `UPDATE widgets SET ${columns.join(', ')}
       WHERE id = $${paramIndex++} AND tenant_id = $${paramIndex++} AND deleted_at IS NULL

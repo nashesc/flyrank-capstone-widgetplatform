@@ -1,13 +1,5 @@
 import { widgetInngest } from './client.js';
-import pool from '../db/pool.js';
-
-async function recordSideEffect({ submissionId, kind, status, errorMessage }) {
-   await pool.query(
-      `INSERT INTO side_effect_log (submission_id, kind, status, error)
-      VALUES ($1,$2,$3,$4)`,
-      [submissionId, kind, status, errorMessage ?? null]
-   );
-}
+import { recordSideEffect } from '../modules/submissions/sideEffectLog.repository.js';
 
 export const submissionConfirmedFn = widgetInngest.createFunction(
    {

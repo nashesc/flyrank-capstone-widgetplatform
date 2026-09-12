@@ -27,5 +27,24 @@ export async function summarizeWidgetForTenant({ widgetId, tenantId }) {
      FROM submissions WHERE widget_id = $1 AND tenant_id = $2`,
     [widgetId, tenantId]
   );
-  return { widgetId, totalSubmissions: summary.rows[0].total_submissions, lastSubmissionAt: summary.rows[0].last_submission_at };
+  const dailyCounts = await pool.query(
+    `SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day, count(*)::int AS count
+     FROM submissions WHERE widget_id = $1 AND tenant_id = $2
+       AND created_at >= now() - interval '14 days'
+     GROUP BY 1 ORDER BY 1`,
+    [widgetId, tenantId]
+  );
+  const countryCounts = await pool.query(
+    `SELECT coalesce(geo_country, 'unknown') AS country, count(*)::int AS count
+     FROM submissions WHERE widget_id = $1 AND tenant_id = $2
+     GROUP BY 1 ORDER BY 2 DESC`,
+    [widgetId, tenantId]
+  );
+  return {
+    widgetId,
+    totalSubmissions: summary.rows[0].total_submissions,
+    lastSubmissionAt: summary.rows[0].last_submission_at,
+    submissionsByDay: dailyCounts.rows,
+    submissionsByCountry: countryCounts.rows,
+  };
 }

@@ -22,6 +22,11 @@ curl -X POST "https://<project>.supabase.co/auth/v1/token?grant_type=password" \
 
 curl http://localhost:4000/api/me -H "Authorization: Bearer <token>"
 # -> {"tenantId":"11bce576-…","supabaseUserId":"8f298341-…"}  (matches seed output)
+
+Closing the Probe-1 loop (public submit -> visible via dashboard API, seed tenant):
+POST /api/submissions (fresh key) -> 201 id 3e100764-…
+GET /api/widgets/8a8b0da0-…/submissions?limit=100 (seed token)
+# -> VISIBLE-VIA-DASHBOARD-API: True (new id present in data)
 ```
 
 ## Probe 2 — Malformed / oversized input → 4xx
@@ -140,11 +145,27 @@ external_id=61ba90e3-…` → `function.finished` in ~0.6s; dashboard run Comple
 
 ## Owner dashboard (:3000)
 
-`GET /login` → 200 (title + Sign in + email input present). `GET /api/widgets` through
+`GET /login` → 200 (title + Sign in + email input present in HTML). `GET /api/widgets` through
 `rewrites()` unauthenticated → API's own `401` Express-shaped JSON (proxy proven).
 Seed login → list via rewrite shows `Seeded Newsletter [signup]`; detail submissions page
-queries through the same path. Wrong password → inline error, no crash; DevTools: no CORS
-errors (same-origin by construction).
+queries through the same path. Human browser pass still pending: real login click-through,
+wrong-password inline error rendering, and a DevTools CORS-error sweep (data paths above
+are proven; only pixels remain).
+
+## Dashboard stats API (counts, series, geo breakdown)
+
+```
+GET /api/dashboard/stats (owner A token)
+# -> {"totalWidgets":1,"totalSubmissions":80}   (dev data incl. burst)
+
+GET /api/dashboard/stats?widgetId=8a8b0da0-… (seed token)
+# -> {"widgetId":"8a8b0da0-…","totalSubmissions":1,
+#     "lastSubmissionAt":"2026-09-12T04:55:22.188Z",
+#     "submissionsByDay":[{"day":"2026-09-12","count":1}],
+#     "submissionsByCountry":[{"country":"Mockland-A","count":1}]}
+
+?widgetId=<foreign id> -> 404 · ?widgetId=0000… -> 404 · ?widgetId=not-a-uuid -> 400 · no token -> 401
+```
 
 ## Shared requirements
 

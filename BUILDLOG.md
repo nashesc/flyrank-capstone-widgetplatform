@@ -38,5 +38,8 @@ before commit (`migrationBuilder`, `upsertTenantFromSupabaseClaims`, `tryGeoProv
   demo widget), `widget.v2.js` (submit status line — v1 frozen per §13, still served).
 - **Step 10a** (`8dd7d75`): minimal Next.js dashboard (login, widget list, submissions +
   snippet), `rewrites()` so Path A stays same-origin; verified HTML + proxied 401/200.
+- **Audit fixes**: deduped `api/.env.example` (had double keys); README gained the
+  required architecture diagram; stats per-widget summary gained 14-day series + geo
+  breakdown (spec §4.6); EVIDENCE reworded two browser-only claims to verified status.
 
 Total: 17 commits, conventional messages, no fixup/amend chains.

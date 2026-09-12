@@ -4,6 +4,15 @@ Embeddable lead-capture widgets. A customer designs a widget in the dashboard, p
 `<script>` tag into any page, and submissions land validated, spam-filtered, and geo-enriched.
 Design: see DESIGN.md. Evidence: see EVIDENCE.md. Build history: see BUILDLOG.md.
 
+## Architecture
+
+```
+Owner (browser :3000, same-origin via rewrites) --JWT--> API :4000 --SQL--> Postgres
+Customer page (any origin :5500) --CORS--> /widget.vN.js (immutable) + /config (ETag)
+Visitor submit --CORS+Idempotency-Key--> validate -> honeypot -> geo A/B -> store -> Inngest event
+Background: Inngest dev :8288 --runs--> confirmation fn --writes--> side_effect_log
+```
+
 ## Stack
 
 Node 20 + Express 5, Postgres 16, Supabase Auth, Inngest, Next.js dashboard, Vanilla JS widget.
@@ -41,6 +50,9 @@ npm run dev      # :3000, login with the seed credentials below
 # 5. Second-origin customer page (fourth terminal, for the cross-origin proof)
 npx serve test-site -l 5500
 # open http://localhost:5500 — never double-click the file (file:// voids the CORS proof)
+
+Note: capstone.yaml's one-line `run:` is POSIX syntax (Linux / Git Bash). On Windows
+PowerShell, follow the per-terminal steps above instead — equivalent commands.
 ```
 
 ### Environment
@@ -92,7 +104,7 @@ curl http://localhost:4000/api/me -H "Authorization: Bearer <access_token>"
 | `DELETE /api/widgets/:id` | Supabase JWT | Soft delete → `204`; history untouched |
 | `GET /api/widgets/:id/embed` | Supabase JWT | `<script>` snippet built from `BASE_URL` |
 | `GET /api/widgets/:id/submissions` | Supabase JWT | Submissions, `?limit` + `cursor` |
-| `GET /api/dashboard/stats[?widgetId=]` | Supabase JWT | Totals / per-widget summary |
+| `GET /api/dashboard/stats[?widgetId=]` | Supabase JWT | Totals, or per-widget summary (counts, 14-day series, geo breakdown) |
 | `GET /api/widgets/:id/config` | Public, CORS | Render projection + `ETag`, `max-age=30` |
 | `GET /widget.vN.js` | Public, CORS | Immutable bundle (`max-age=31536000`); all versions retained |
 | `POST /api/submissions` | Public, CORS, `Idempotency-Key: <uuid>` required | `201` new / `200` replay / `400` / `404` / `413` / `429` |
